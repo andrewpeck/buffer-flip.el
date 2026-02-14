@@ -65,6 +65,12 @@ Buffers with names matching these patterns will be skipped when
 flipping through buffers."
   :type '(repeat string) :group 'buffer-flip)
 
+(defcustom buffer-flip-skip-major-modes nil
+  "A list of major modes which will be skipped from buffer-flip.
+
+Can be used e.g. to skip \"dired-mode\" buffers."
+  :type '(repeat symbol) :group 'buffer-flip)
+
 (defcustom buffer-flip-wraparound t
   "Set to nil for buffer-flip to not wraparound."
   :type 'boolean :group 'buffer-flip)
@@ -125,11 +131,13 @@ DIRECTION can be \='forward or \='backward"
 
 (defun buffer-flip-skip-buffer (buf)
   "Return non-nil if BUF should be skipped."
-  (or (get-buffer-window buf)         ; already visible?
-      (= ? (elt (buffer-name buf) 0)) ; internal?
-      (let ((name (buffer-name buf))) ; matches regex?
+  (or (get-buffer-window buf)           ; already visible?
+      (= ? (elt (buffer-name buf) 0))   ; internal?
+      (let ((name (buffer-name buf)))   ; matches regex?
         (cl-find-if (lambda (rex) (string-match-p rex name) )
-                    buffer-flip-skip-patterns))))
+                    buffer-flip-skip-patterns))
+      (with-current-buffer buf
+        (memq major-mode buffer-flip-skip-major-modes))))
 
 (defun buffer-flip-forward ()
   "Switch to previous buffer during cycling.
