@@ -65,6 +65,10 @@ Buffers with names matching these patterns will be skipped when
 flipping through buffers."
   :type '(repeat string) :group 'buffer-flip)
 
+(defcustom buffer-flip-wraparound t
+  "Set to nil for buffer-flip to not wraparound."
+  :type 'boolean :group 'buffer-flip)
+
 ;;;###autoload
 (defun buffer-flip (&optional arg original-configuration)
   "Begin cycling through buffers.
@@ -98,15 +102,23 @@ If there is no other window, one is created first."
     (other-window 1)
     (buffer-flip nil original-window-configuration)))
 
+(defun buffer-flip-get-next-buffer (buffer buffer-list direction)
+  "Return the next BUFFER in BUFFER-LIST.
+
+Depending on the value of DIRECTION, will either increment or decrement."
+  (nth (let ((next-pos (+ (cl-position buffer buffer-list) ; reference point to cycle
+                          (if (eq direction 'backward) -1 1)))) ; fwd or back
+         (if buffer-flip-wraparound
+             (mod next-pos (length buffer-list)) ; Mod length to wrap
+           next-pos)) buffer-list))
+
 (defun buffer-flip-cycle (&optional direction)
   "Cycle in the direction indicated by DIRECTION.
-DIRECTION can be 'forward or 'backward"
+DIRECTION can be \='forward or \='backward"
   (let ((l (buffer-list)))
-    (switch-to-buffer            ; Switch to next/prev buffer in stack
-     (cl-do ((buf (current-buffer)     ; Using the current buffer as a
-                  (nth (mod (+ (cl-position buf l) ; reference point to cycle
-                               (if (eq direction 'backward) -1 1)) ; fwd or back
-                            (length l)) l)) ; Mod length to wrap
+    (switch-to-buffer                   ; Switch to next/prev buffer in stack
+     (cl-do ((buf (current-buffer)      ; Using the current buffer as a
+                  (buffer-flip-get-next-buffer buf l direction))
              (count (length l) (1- count))) ; count the number of iterations
          ((or (= 0 count) ;; don't cycle through list more than once.
               (not (buffer-flip-skip-buffer buf))) buf)) t))) ; skip some buffers
